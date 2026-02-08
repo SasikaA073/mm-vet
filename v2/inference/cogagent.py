@@ -18,7 +18,7 @@ from accelerate import (
     infer_auto_device_map,
     load_checkpoint_and_dispatch,
 )
-from utils import evaluate_on_mmvetv2, process_images_for_question
+from utils.utils import evaluate_on_mmvetv2, process_images_for_question
 
 
 class CogAgent:

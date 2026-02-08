@@ -6,7 +6,7 @@ import os
 import torch
 import torchvision
 from PIL import Image
-from utils import evaluate_on_mmvetv2, process_images_for_question
+from utils.utils import evaluate_on_mmvetv2, process_images_for_question
 
 
 def auto_configure_device_map(num_gpus):

@@ -4,7 +4,7 @@ from pathlib import Path
 import argparse
 import json
 import google.generativeai as genai
-from utils import evaluate_on_mmvetv2
+from utils.utils import evaluate_on_mmvetv2
 
 
 class Gemini:

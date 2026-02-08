@@ -4,7 +4,7 @@ import os
 import base64
 import requests
 import argparse
-from utils import evaluate_on_mmvetv2
+from utils.utils import evaluate_on_mmvetv2
 from http import HTTPStatus
 import dashscope
 

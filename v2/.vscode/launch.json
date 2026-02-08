@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run CogVLM Inference",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/storage/dulanga/4d-fyp/sasika/VLM-FreqPAC/mm-vet/v2/inference/cogvlm.py",
+            "console": "integratedTerminal",
+            "cwd": "/storage/dulanga/4d-fyp/sasika/VLM-FreqPAC/mm-vet/v2",
+            "args": [
+                "--preference_optimize",
+                "--bf16"
+            ]
+        }
+    ]
+}

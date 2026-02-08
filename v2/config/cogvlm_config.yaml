@@ -1,0 +1,52 @@
+
+env:
+  conda_environment: mmvet
+  cuda_visible_devices: '6'
+model:
+  name: zai-org/cogvlm-chat-hf
+  model_type: cogvlm
+  torch_dtype: float16
+  load_in_8bit: false
+  device_map: cuda:0
+  revision: main
+save:
+  model_save_path: output/cogvlm/checkpoints
+  save_adapter_only: true
+
+data:
+  train_dataset_path: data/mm  # NOTE: Not used for alpaca training - data comes from tatsu-lab/alpaca_eval
+  num_train_samples: 4 # TODO: Change this later # Limit samples for testing (alpaca_eval has 805 total)
+training:
+  output_dir: output/CogVLM/checkpoints
+  shuffle: false
+  num_epochs: 2
+  batch_size: 1
+  gradient_accumulation_steps: 64
+  learning_rate: 5.0e-06
+  eps: 1.0e-08
+  warmup_steps: 0
+  logging_steps: 50
+  save_strategy: epoch
+  gradient_checkpointing: true
+  fp16: true
+adapter:
+  
+  # Adapter parameters
+  params:
+    num_components: 24
+    tau: 1.0
+  
+  # Target layers for adapter injection (language model layers in LLaVA)
+  # LLaVA uses LLaMA architecture: model.language_model.model.layers.{layer_num}.{sublayer}
+  layers:
+    - name: "model.layers.31.self_attn.vision_expert_query_key_value"
+    - name: "model.layers.31.self_attn.vision_expert_dense"
+    - name: "model.layers.31.self_attn.language_expert_query_key_value"
+    - name: "model.layers.31.self_attn.language_expert_dense"
+
+evaluation:
+  eval_dataset: MM-VetV2
+  num_eval_samples: -1
+  output_dir: output/InternVL/eval_results
+judge:
+  model_name: gpt-4o

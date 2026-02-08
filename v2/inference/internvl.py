@@ -4,7 +4,8 @@ from transformers import AutoModel, AutoTokenizer, CLIPImageProcessor
 import os
 from accelerate import init_empty_weights, infer_auto_device_map
 import argparse
-from utils import evaluate_on_mmvetv2, process_images_for_question
+from utils.utils import evaluate_on_mmvetv2, process_images_for_question
+from adapter.adapter_helper_functions import inject_adapters_vlm, freeze_model_except_adapters
 
 
 def disable_torch_init():
@@ -38,10 +39,11 @@ class Internvl:
             device_map="auto",
         ).eval()
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False, trust_remote_code=True)
         self.temperature = 0.0
         self.system_message = system_message
         self.chat_format = chat_format
+        self.model_name = model_name
 
     def get_response(self, image_folder, prompt="What's in this image?") -> str:
         images = []
@@ -71,7 +73,7 @@ class Internvl:
             repetition_penalty=1.2,
         )
 
-        response = model.chat(
+        response = self.model.chat(
             self.tokenizer, pixel_values, text_query, generation_config
         )
         return response
@@ -108,6 +110,22 @@ def arg_parser():
         action="store_true",
         help="whether to use chat format",
     )
+
+    parser.add_argument(
+        "--preference_optimize",
+        action="store_true",
+        help="whether to optimize preference",
+    )
+
+    parser.add_argument(
+        "--n_pref_examples",
+        action="store_true", # what does this "action" do? : it stores the value as true if the flag is present
+        help="number of preference examples",
+    )
+
+    parser.add_argument("--adapter_config_path", type=str, default="config/internvl_config.yaml")
+
+    parser.add_argument("--N_EPOCHS", type=int, default=10)
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
     return args
@@ -117,9 +135,57 @@ if __name__ == "__main__":
     args = arg_parser()
 
     model = Internvl(args.model_name, image_first=args.image_first)
-    # model = None
+    # model = NoneIntern
     if args.image_first:
         args.model_name = args.model_name + "-image-first"
     if args.chat_format:
         args.model_name = args.model_name + "-chat-format"
-    evaluate_on_mmvetv2(args, model)
+
+    # For original model 
+    original_model_results_path = evaluate_on_mmvetv2(args, model)
+
+    if args.preference_optimize:
+        # Load the OpenAI API config & adapter config
+        with open(args.openai_api_config_path, "r") as f:
+            openai_api_config = yaml.safe_load(f)
+        if os.path.exists(openai_config_path):
+            with open(openai_config_path, "r") as file:
+                openai_config = yaml.safe_load(file)
+            openai_api_key = openai_config.get("OPENAI_API_KEY")
+            if openai_api_key:
+                os.environ["OPENAI_API_KEY"] = openai_api_key
+        else:
+            raise ValueError("OpenAI API config not found")
+        with open(args.adapter_config_path, "r") as f:
+            adapter_config = yaml.safe_load(f) 
+
+        # Adapter Injection
+        adapter_params_json = adapter_config.get("adapter").get("params")
+        adapter_layers_json = adapter_config.get("adapter").get("layers")
+
+        model.model = inject_adapters_vlm(
+            model.model, 
+            DCTAdapter, 
+            adapter_params_json, 
+            adapter_layers_json 
+        )
+
+        # Move adapters to same dtype/device
+        base_dtype = torch.float16
+        base_device = next(model.model.parameters()).device
+
+        for name, param in model.model.named_parameters():
+            if "adapter" in name:
+                param.data = param.data.to(device=base_device, dtype=base_dtype)
+
+        model.model = model.model.to(device=device_map)
+        freeze_model_except_adapters(model.model)
+
+        # Finetune the model adapters on preference data
+        injected_model_results_path = evaluate_on_mmvetv2_preference_subset(args, model, adapter_config, original_model_results_path)
+
+        # Finally get the response 
+        model.eval()
+        with torch.inference_mode():
+            evaluate_on_mmvetv2(args, model, is_pref_result=True)
+    

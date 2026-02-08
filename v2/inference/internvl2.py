@@ -5,7 +5,7 @@ from transformers import AutoModel, AutoTokenizer, CLIPImageProcessor
 import os
 from accelerate import init_empty_weights, infer_auto_device_map
 import argparse
-from utils import evaluate_on_mmvetv2, process_images_for_question
+from utils.utils import evaluate_on_mmvetv2, process_images_for_question
 import torchvision.transforms as T
 from PIL import Image, ImageDraw
 from torchvision.transforms.functional import InterpolationMode

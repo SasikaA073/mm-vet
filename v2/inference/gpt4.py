@@ -2,7 +2,7 @@ import time
 import os
 import requests
 import argparse
-from utils import encode_image, evaluate_on_mmvetv2
+from utils.utils import encode_image, evaluate_on_mmvetv2
 
 
 

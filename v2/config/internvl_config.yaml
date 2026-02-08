@@ -1,0 +1,55 @@
+
+env:
+  conda_environment: mmvet
+  cuda_visible_devices: '0'
+model:
+  name: OpenGVLab/VL-Chat-V1-2
+  model_type: internvl
+  torch_dtype: float16
+  load_in_8bit: false
+  device_map: cuda:0
+  revision: main
+save:
+  model_save_path: output/InternVL/checkpoints
+  save_adapter_only: true
+generation:
+  max_new_tokens: 256
+  do_sample: true
+  temperature: 0.7
+  top_p: 0.9
+data:
+  train_dataset_path: data/mtbench50.jsonl  # NOTE: Not used for alpaca training - data comes from tatsu-lab/alpaca_eval
+  num_train_samples: 50 # Limit samples for testing (alpaca_eval has 805 total)
+training:
+  output_dir: output/InternVL/checkpoints
+  shuffle: false
+  num_epochs: 10
+  batch_size: 1
+  gradient_accumulation_steps: 64
+  learning_rate: 5.0e-06
+  eps: 1.0e-08
+  warmup_steps: 0
+  logging_steps: 50
+  save_strategy: epoch
+  gradient_checkpointing: true
+  fp16: true
+adapter:
+  
+  # Adapter parameters
+  params:
+    num_components: 24
+    tau: 1.0
+  
+  # Target layers for adapter injection (language model layers in LLaVA)
+  # LLaVA uses LLaMA architecture: model.language_model.model.layers.{layer_num}.{sublayer}
+  layers:
+    - name: "model.layers.31.self_attn.q_proj"
+    - name: "model.layers.31.self_attn.k_proj"
+    - name: "model.layers.31.self_attn.v_proj"
+
+evaluation:
+  eval_dataset: MM-VetV2
+  num_eval_samples: -1
+  output_dir: output/InternVL/eval_results
+judge:
+  model_name: gpt-4o

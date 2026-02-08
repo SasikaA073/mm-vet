@@ -8,7 +8,7 @@ from accelerate import (
 )
 import os
 import argparse
-from utils import evaluate_on_mmvetv2
+from utils.utils import evaluate_on_mmvetv2
 
 
 class Emu2:
